@@ -8,14 +8,21 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       flake-utils,
       ...
     }:
+    let
+      homeManagerModule = import ./nix/home_manager_module.nix { inherit self; };
+    in
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        home_reporter = pkgs.callPackage ./nix/home_reporter.nix {
+          nodejs = pkgs.nodejs_24;
+        };
         fhs = pkgs.buildFHSEnv {
           name = "dev";
           targetPkgs = _: [
@@ -40,6 +47,24 @@
             fi
           '';
         };
+        packages = {
+          inherit home_reporter;
+          default = home_reporter;
+        };
+        apps = {
+          home_reporter = flake-utils.lib.mkApp { drv = home_reporter; };
+          default = flake-utils.lib.mkApp { drv = home_reporter; };
+        };
       }
-    );
+    )
+    // {
+      homeManagerModules = {
+        default = homeManagerModule;
+        home_reporter = homeManagerModule;
+      };
+      homeModules = {
+        default = homeManagerModule;
+        home_reporter = homeManagerModule;
+      };
+    };
 }
