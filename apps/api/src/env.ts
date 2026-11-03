@@ -1,5 +1,5 @@
 export type Bindings = {
-  SERVER_STATUS_KV: KVNamespace;
+  HOME_REPORTER_KV: KVNamespace;
 };
 
 export type AppEnv = {

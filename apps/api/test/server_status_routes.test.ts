@@ -8,7 +8,7 @@ type KvGet = (
 ) => Promise<string | null>;
 
 const createEnv = (get: KvGet) =>
-  ({ SERVER_STATUS_KV: { get } }) as unknown as Bindings;
+  ({ HOME_REPORTER_KV: { get } }) as unknown as Bindings;
 
 describe("GET /api/server_status", () => {
   afterEach(() => {

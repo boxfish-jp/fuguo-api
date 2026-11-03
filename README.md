@@ -21,7 +21,7 @@
 2. KV namespace を作成し、表示された ID を `apps/api/wrangler.toml` の `id` に設定します。
 
    ```sh
-   pnpm --filter @fuguo_api/api exec wrangler kv namespace create SERVER_STATUS_KV
+   pnpm --filter @fuguo_api/api exec wrangler kv namespace create HOME_REPORTER_KV
    ```
 
 3. `Workers KV Storage Write` 権限だけを持つ API トークンを作成します。

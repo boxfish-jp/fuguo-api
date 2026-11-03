@@ -25,7 +25,7 @@ const route = createRoute({
 export const serverStatusRoutes = new OpenAPIHono<AppEnv>();
 
 serverStatusRoutes.openapi(route, async (c) => {
-  const value = await c.env.SERVER_STATUS_KV.get(SERVER_STATUS_KEY, {
+  const value = await c.env.HOME_REPORTER_KV.get(SERVER_STATUS_KEY, {
     cacheTtl: 30,
   });
   return c.json({ alive: value !== null }, 200);
