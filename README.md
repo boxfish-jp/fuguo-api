@@ -26,7 +26,7 @@
 
 3. `Workers KV Storage Write` 権限だけを持つ API トークンを作成します。
 
-4. `apps/status_server/.env` を作成し、手順 2 と 3 で取得した値を設定します。
+4. `apps/home_reporter/.env` を作成し、手順 2 と 3 で取得した値を設定します。
 
    ```sh
    CLOUDFLARE_ACCOUNT_ID=<account id>
@@ -37,7 +37,7 @@
 5. 宅内サーバーを起動します。
 
    ```sh
-   pnpm --filter @fuguo_api/status_server start
+   pnpm --filter @fuguo_api/home_reporter start
    ```
 
 6. API をデプロイします。
