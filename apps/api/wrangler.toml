@@ -4,5 +4,4 @@ compatibility_date = "2026-10-01"
 
 [[kv_namespaces]]
 binding = "HOME_REPORTER_KV"
-id = "00000000000000000000000000000000"
-# この id は実際の KV namespace ID に置き換える
+id = "7d822c15048547ddbc02705ce5c5a0be"
