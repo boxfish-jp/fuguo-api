@@ -1,3 +1,8 @@
 name = "fuguo_api"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
+
+[[kv_namespaces]]
+binding = "SERVER_STATUS_KV"
+id = "00000000000000000000000000000000"
+# この id は実際の KV namespace ID に置き換える

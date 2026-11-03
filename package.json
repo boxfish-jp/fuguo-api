@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "deploy": "turbo run deploy",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "check": "biome check .",
     "check:write": "biome check --write .",
     "format": "biome format --write ."
