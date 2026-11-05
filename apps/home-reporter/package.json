@@ -1,5 +1,5 @@
 {
-  "name": "@fuguo_api/home_reporter",
+  "name": "@fuguo_api/home-reporter",
   "private": true,
   "type": "module",
   "engines": {

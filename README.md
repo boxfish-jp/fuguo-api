@@ -26,7 +26,7 @@
 
 3. `Workers KV Storage Write` 権限だけを持つ API トークンを作成します。
 
-4. `apps/home_reporter/.env` を作成し、手順 2 と 3 で取得した値を設定します。
+4. `apps/home-reporter/.env` を作成し、手順 2 と 3 で取得した値を設定します。
 
    ```sh
    CLOUDFLARE_ACCOUNT_ID=<account id>
@@ -37,7 +37,7 @@
 5. 宅内サーバーを起動します。
 
    ```sh
-   pnpm --filter @fuguo_api/home_reporter start
+   pnpm --filter @fuguo_api/home-reporter start
    ```
 
 6. API をデプロイします。
@@ -48,7 +48,7 @@
 
 ## 配信 URL の記録
 
-home_reporter は streamingkit の hub（既定 `http://localhost:8888`）へ socket.io で接続し、orchestrator が broadcast する `streaming_info` を購読します。niconico と youtube の両方の配信情報が揃ったら、KV の `streaming_urls` キーへサイト別の配信 URL を TTL 付きで書き込みます。
+home-reporter は streamingkit の hub（既定 `http://localhost:8888`）へ socket.io で接続し、orchestrator が broadcast する `streaming_info` を購読します。niconico と youtube の両方の配信情報が揃ったら、KV の `streaming_urls` キーへサイト別の配信 URL を TTL 付きで書き込みます。
 
 ```json
 {"niconico":"https://live.nicovideo.jp/watch/lv351748501","youtube":null}
@@ -63,13 +63,13 @@ home_reporter は streamingkit の hub（既定 `http://localhost:8888`）へ so
 
 ## Nix での起動
 
-`nix run` で宅内サーバーを起動できます。`apps/home_reporter/.env` は自動では読まれないため、環境変数はシェルから渡します。
+`nix run` で宅内サーバーを起動できます。`apps/home-reporter/.env` は自動では読まれないため、環境変数はシェルから渡します。
 
 ```sh
 export CLOUDFLARE_ACCOUNT_ID=YOUR_ACCOUNT_ID
 export CLOUDFLARE_KV_NAMESPACE_ID=YOUR_NAMESPACE_ID
 export CLOUDFLARE_API_TOKEN=YOUR_API_TOKEN
-nix run .#home_reporter
+nix run .#home-reporter
 ```
 
 `YOUR_*` は手元の値に置き換えます。
@@ -77,8 +77,8 @@ nix run .#home_reporter
 `nix build` で実行ファイルを取り出せます。上の export を済ませたシェルで実行します。
 
 ```sh
-nix build .#home_reporter
-./result/bin/home_reporter
+nix build .#home-reporter
+./result/bin/home-reporter
 ```
 
 ### home-manager
@@ -111,9 +111,9 @@ flake の input にこのリポジトリを追加し、ユーザーサービス�
             home.homeDirectory = "/home/<name>";
             home.stateVersion = "26.11";
 
-            services.home_reporter = {
+            services.home-reporter = {
               enable = true;
-              environmentFile = "/run/secrets/home_reporter.env";
+              environmentFile = "/run/secrets/home-reporter.env";
               intervalMs = 300000;
               ttlSeconds = 600;
             };
@@ -130,7 +130,7 @@ flake の input にこのリポジトリを追加し、ユーザーサービス�
 home-manager switch --flake .#<name>
 ```
 
-`<name>` はユーザー名に置き換えます。`environmentFile` には `CLOUDFLARE_*` を KEY=VALUE 形式で書いたファイルを指定します。ファイルの所有者をサービス実行ユーザーにし、`chmod 600` で保護します（例: `chown <name> /run/secrets/home_reporter.env && chmod 600 /run/secrets/home_reporter.env`）。`environmentFile` は文字列で指定し、path literal は使わないでください。
+`<name>` はユーザー名に置き換えます。`environmentFile` には `CLOUDFLARE_*` を KEY=VALUE 形式で書いたファイルを指定します。ファイルの所有者をサービス実行ユーザーにし、`chmod 600` で保護します（例: `chown <name> /run/secrets/home-reporter.env && chmod 600 /run/secrets/home-reporter.env`）。`environmentFile` は文字列で指定し、path literal は使わないでください。
 
 `intervalMs` と `ttlSeconds` はそれぞれ `LIVENESS_INTERVAL_MS` と `LIVENESS_TTL_SECONDS` に対応します。上は既定値で、`intervalMs < ttlSeconds * 1000` を満たす必要があります。`streamingKitHubUrl` は `STREAMING_KIT_HUB_URL` に対応し、既定値は `http://localhost:8888` です。
 

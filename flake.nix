@@ -20,7 +20,7 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        home_reporter = pkgs.callPackage ./nix/home_reporter.nix {
+        home-reporter = pkgs.callPackage ./nix/home-reporter.nix {
           nodejs = pkgs.nodejs_24;
         };
         fhs = pkgs.buildFHSEnv {
@@ -48,23 +48,23 @@
           '';
         };
         packages = {
-          inherit home_reporter;
-          default = home_reporter;
+          inherit home-reporter;
+          default = home-reporter;
         };
         apps = {
-          home_reporter = flake-utils.lib.mkApp { drv = home_reporter; };
-          default = flake-utils.lib.mkApp { drv = home_reporter; };
+          home-reporter = flake-utils.lib.mkApp { drv = home-reporter; };
+          default = flake-utils.lib.mkApp { drv = home-reporter; };
         };
       }
     )
     // {
       homeManagerModules = {
         default = homeManagerModule;
-        home_reporter = homeManagerModule;
+        home-reporter = homeManagerModule;
       };
       homeModules = {
         default = homeManagerModule;
-        home_reporter = homeManagerModule;
+        home-reporter = homeManagerModule;
       };
     };
 }

@@ -10,12 +10,12 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "home_reporter";
+  pname = "home-reporter";
   version = "0.1.0";
 
   src = ../.;
 
-  pnpmWorkspaces = [ "@fuguo_api/home_reporter" ];
+  pnpmWorkspaces = [ "@fuguo_api/home-reporter" ];
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs)
@@ -39,7 +39,7 @@ stdenv.mkDerivation (finalAttrs: {
   buildPhase = ''
     runHook preBuild
     mkdir -p dist
-    esbuild apps/home_reporter/src/index.ts \
+    esbuild apps/home-reporter/src/index.ts \
       --bundle \
       --format=esm \
       --platform=node \
@@ -51,15 +51,15 @@ stdenv.mkDerivation (finalAttrs: {
 
   installPhase = ''
     runHook preInstall
-    install -Dm644 dist/index.mjs $out/lib/home_reporter/index.mjs
-    makeWrapper ${nodejs}/bin/node $out/bin/home_reporter \
-      --add-flags $out/lib/home_reporter/index.mjs
+    install -Dm644 dist/index.mjs $out/lib/home-reporter/index.mjs
+    makeWrapper ${nodejs}/bin/node $out/bin/home-reporter \
+      --add-flags $out/lib/home-reporter/index.mjs
     runHook postInstall
   '';
 
   meta = {
     description = "Reports home server status and data";
-    mainProgram = "home_reporter";
+    mainProgram = "home-reporter";
     platforms = nodejs.meta.platforms;
   };
 })
