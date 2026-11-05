@@ -11,6 +11,10 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "socket.io-client": "^4.8.1",
+    "socket.io-msgpack-parser": "^3.0.2"
+  },
   "devDependencies": {
     "@types/node": "^25.9.9",
     "tsx": "^4.23.15",

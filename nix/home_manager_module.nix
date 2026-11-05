@@ -52,6 +52,13 @@ in
       default = 600;
       description = "Expiration of the liveness record in seconds. Sets LIVENESS_TTL_SECONDS.";
     };
+
+    streamingKitHubUrl = lib.mkOption {
+      type = lib.types.strMatching "https?://.+";
+      default = "http://localhost:8888";
+      example = "http://192.168.68.16:8888";
+      description = "URL of the streamingkit hub to subscribe to. Sets STREAMING_KIT_HUB_URL.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -68,7 +75,7 @@ in
 
     systemd.user.services.home_reporter = {
       Unit = {
-        Description = "home_reporter liveness recorder";
+        Description = "home_reporter status and data reporter";
         StartLimitIntervalSec = 300;
         StartLimitBurst = 5;
       };
@@ -78,6 +85,7 @@ in
         Environment = [
           "LIVENESS_INTERVAL_MS=${toString cfg.intervalMs}"
           "LIVENESS_TTL_SECONDS=${toString cfg.ttlSeconds}"
+          "STREAMING_KIT_HUB_URL=${cfg.streamingKitHubUrl}"
         ];
         Restart = "on-failure";
         RestartSec = "10s";

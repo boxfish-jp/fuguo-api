@@ -4,17 +4,36 @@
   esbuild,
   makeWrapper,
   nodejs,
+  pnpm_11,
+  fetchPnpmDeps,
+  pnpmConfigHook,
 }:
 
-stdenv.mkDerivation {
+stdenv.mkDerivation (finalAttrs: {
   pname = "home_reporter";
   version = "0.1.0";
 
   src = ../.;
 
+  pnpmWorkspaces = [ "@fuguo_api/home_reporter" ];
+
+  pnpmDeps = fetchPnpmDeps {
+    inherit (finalAttrs)
+      pname
+      version
+      src
+      pnpmWorkspaces
+      ;
+    pnpm = pnpm_11;
+    fetcherVersion = 4;
+    hash = "sha256-9jnDJNSrzhmjcJB9b+KuZHlDwjlnnEGpLwCnCBHipo4=";
+  };
+
   nativeBuildInputs = [
     esbuild
     makeWrapper
+    pnpm_11
+    pnpmConfigHook
   ];
 
   buildPhase = ''
@@ -25,6 +44,7 @@ stdenv.mkDerivation {
       --format=esm \
       --platform=node \
       --target=node${lib.versions.major nodejs.version} \
+      --banner:js='import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' \
       --outfile=dist/index.mjs
     runHook postBuild
   '';
@@ -38,8 +58,8 @@ stdenv.mkDerivation {
   '';
 
   meta = {
-    description = "Writes the home server liveness record to Cloudflare KV";
+    description = "Reports home server status and data";
     mainProgram = "home_reporter";
     platforms = nodejs.meta.platforms;
   };
-}
+})
