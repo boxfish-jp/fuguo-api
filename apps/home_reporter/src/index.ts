@@ -5,9 +5,9 @@ import {
 } from "./liveness_record";
 import { readStreamingKitHubUrl } from "./streaming_kit_hub";
 import {
-  STREAMING_STATUS_KEY,
-  startStreamingStatusRecording,
-} from "./streaming_status";
+  STREAMING_URLS_KEY,
+  startStreamingUrlsRecording,
+} from "./streaming_urls";
 
 const livenessConfig = readLivenessRecordConfig(process.env);
 const streamingConfig = {
@@ -18,7 +18,7 @@ const streamingConfig = {
 };
 
 const stopLiveness = startLivenessRecording(livenessConfig);
-const stopStreaming = startStreamingStatusRecording(streamingConfig);
+const stopStreaming = startStreamingUrlsRecording(streamingConfig);
 
 const shutdown = (): void => {
   stopLiveness();
@@ -33,5 +33,5 @@ console.info(
   `liveness recording scheduled: key=${SERVER_STATUS_KEY} intervalMs=${livenessConfig.intervalMs}`,
 );
 console.info(
-  `streaming status recording started: key=${STREAMING_STATUS_KEY} hubUrl=${streamingConfig.hubUrl} intervalMs=${streamingConfig.intervalMs} ttlSeconds=${streamingConfig.ttlSeconds}`,
+  `streaming urls recording started: key=${STREAMING_URLS_KEY} hubUrl=${streamingConfig.hubUrl} intervalMs=${streamingConfig.intervalMs} ttlSeconds=${streamingConfig.ttlSeconds}`,
 );

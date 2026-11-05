@@ -1,16 +1,16 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { AppEnv } from "../env";
 import {
-  StreamingStatusSchema,
-  type StreamingStatusValue,
-  StreamingStatusValueSchema,
-} from "../schemas/streaming_status_schema";
+  StreamingUrlsSchema,
+  type StreamingUrlsValue,
+  StreamingUrlsValueSchema,
+} from "../schemas/streaming_urls_schema";
 
-const STREAMING_STATUS_KEY = "streaming_status";
+const STREAMING_URLS_KEY = "streaming_urls";
 
-const parseStreamingStatus = (
+const parseStreamingUrls = (
   value: string | null,
-): StreamingStatusValue | null => {
+): StreamingUrlsValue | null => {
   if (value === null) {
     return null;
   }
@@ -24,7 +24,7 @@ const parseStreamingStatus = (
   if (parsed === null) {
     return null;
   }
-  const result = StreamingStatusValueSchema.safeParse(parsed);
+  const result = StreamingUrlsValueSchema.safeParse(parsed);
   if (!result.success) {
     console.error(result.error);
     return null;
@@ -37,15 +37,15 @@ const parseStreamingStatus = (
 
 const route = createRoute({
   method: "get",
-  path: "/api/streaming_status",
-  tags: ["StreamingStatus"],
+  path: "/api/streaming_urls",
+  tags: ["StreamingUrls"],
   summary: "配信中のサイト別URLを返す",
   description:
-    "KVの配信状態を読み、配信中のサイトの視聴URLを返す。配信していなければnull。cacheTtlにより最大30秒ほど遅れる。",
+    "KVに記録されたサイト別の配信URLを読み、配信していればそのURLを返す。配信していなければnull。cacheTtlにより最大30秒ほど遅れる。",
   responses: {
     200: {
       description: "配信中のサイト別URL。配信していなければnull",
-      content: { "application/json": { schema: StreamingStatusSchema } },
+      content: { "application/json": { schema: StreamingUrlsSchema } },
     },
     500: {
       description: "KVの読み取りに失敗した",
@@ -53,11 +53,11 @@ const route = createRoute({
   },
 });
 
-export const streamingStatusRoutes = new OpenAPIHono<AppEnv>();
+export const streamingUrlsRoutes = new OpenAPIHono<AppEnv>();
 
-streamingStatusRoutes.openapi(route, async (c) => {
-  const value = await c.env.HOME_REPORTER_KV.get(STREAMING_STATUS_KEY, {
+streamingUrlsRoutes.openapi(route, async (c) => {
+  const value = await c.env.HOME_REPORTER_KV.get(STREAMING_URLS_KEY, {
     cacheTtl: 30,
   });
-  return c.json(parseStreamingStatus(value), 200);
+  return c.json(parseStreamingUrls(value), 200);
 });

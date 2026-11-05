@@ -10,7 +10,7 @@ type KvGet = (
 const createEnv = (get: KvGet) =>
   ({ HOME_REPORTER_KV: { get } }) as unknown as Bindings;
 
-describe("GET /api/streaming_status", () => {
+describe("GET /api/streaming_urls", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -24,7 +24,7 @@ describe("GET /api/streaming_status", () => {
     );
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -34,28 +34,28 @@ describe("GET /api/streaming_status", () => {
       niconico: "https://live.nicovideo.jp/watch/lv351748501",
       youtube: null,
     });
-    expect(get).toHaveBeenCalledWith("streaming_status", { cacheTtl: 30 });
+    expect(get).toHaveBeenCalledWith("streaming_urls", { cacheTtl: 30 });
   });
 
   it("KVにキーが無ければnullを返す", async () => {
     const get = vi.fn<KvGet>().mockResolvedValue(null);
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toBeNull();
-    expect(get).toHaveBeenCalledWith("streaming_status", { cacheTtl: 30 });
+    expect(get).toHaveBeenCalledWith("streaming_urls", { cacheTtl: 30 });
   });
 
   it("値がJSONのnullならnullを返す", async () => {
     const get = vi.fn<KvGet>().mockResolvedValue("null");
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -70,7 +70,7 @@ describe("GET /api/streaming_status", () => {
       .mockResolvedValue(JSON.stringify({ niconico: null, youtube: null }));
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -88,7 +88,7 @@ describe("GET /api/streaming_status", () => {
     );
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -109,7 +109,7 @@ describe("GET /api/streaming_status", () => {
     );
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -124,7 +124,7 @@ describe("GET /api/streaming_status", () => {
     const get = vi.fn<KvGet>().mockResolvedValue("123");
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -139,7 +139,7 @@ describe("GET /api/streaming_status", () => {
     const get = vi.fn<KvGet>().mockResolvedValue("{broken");
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -149,14 +149,14 @@ describe("GET /api/streaming_status", () => {
     expect(error).toHaveBeenCalledTimes(1);
   });
 
-  it("旧boolean形式ならconsole.errorしてnullを返す", async () => {
+  it("配信URLがbooleanならconsole.errorしてnullを返す", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const get = vi
       .fn<KvGet>()
       .mockResolvedValue(JSON.stringify({ niconico: true, youtube: false }));
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );
@@ -171,7 +171,7 @@ describe("GET /api/streaming_status", () => {
     const get = vi.fn<KvGet>().mockRejectedValue(new Error("kv unavailable"));
 
     const response = await app.request(
-      "/api/streaming_status",
+      "/api/streaming_urls",
       undefined,
       createEnv(get),
     );

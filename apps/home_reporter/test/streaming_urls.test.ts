@@ -5,13 +5,13 @@ import type {
   SubscribeToStreamingInfo,
 } from "../src/streaming_kit_hub";
 import {
-  recordStreamingStatus,
-  type StreamingStatusRecordConfig,
-  startStreamingStatusRecording,
+  recordStreamingUrls,
+  type StreamingUrlsRecordConfig,
+  startStreamingUrlsRecording,
   streamUrlOf,
-} from "../src/streaming_status";
+} from "../src/streaming_urls";
 
-const config: StreamingStatusRecordConfig = {
+const config: StreamingUrlsRecordConfig = {
   kv: {
     accountId: "account",
     namespaceId: "namespace",
@@ -59,7 +59,7 @@ const createHarness = (request = okRequest()) => {
     },
   );
 
-  const stop = startStreamingStatusRecording(config, subscribe, request);
+  const stop = startStreamingUrlsRecording(config, subscribe, request);
 
   return {
     stop,
@@ -100,11 +100,11 @@ describe("streamUrlOf", () => {
   });
 });
 
-describe("recordStreamingStatus", () => {
-  it("streaming_statusキーへサイト別URLのJSONをTTL付きで書く", async () => {
+describe("recordStreamingUrls", () => {
+  it("streaming_urlsキーへサイト別URLのJSONをTTL付きで書く", async () => {
     const request = okRequest();
 
-    await recordStreamingStatus(
+    await recordStreamingUrls(
       config,
       {
         niconico: "https://live.nicovideo.jp/watch/lv351748501",
@@ -116,7 +116,7 @@ describe("recordStreamingStatus", () => {
     expect(request).toHaveBeenCalledTimes(1);
     const [input, init] = request.mock.calls[0];
     const url = new URL(String(input));
-    expect(url.pathname.endsWith("/values/streaming_status")).toBe(true);
+    expect(url.pathname.endsWith("/values/streaming_urls")).toBe(true);
     expect(url.searchParams.get("expiration_ttl")).toBe("600");
     expect(init?.body).toBe(
       '{"niconico":"https://live.nicovideo.jp/watch/lv351748501","youtube":null}',
@@ -126,7 +126,7 @@ describe("recordStreamingStatus", () => {
   it("両サイトのURLをJSONで書ける", async () => {
     const request = okRequest();
 
-    await recordStreamingStatus(
+    await recordStreamingUrls(
       config,
       {
         niconico: "https://live.nicovideo.jp/watch/lv351748501",
@@ -142,7 +142,7 @@ describe("recordStreamingStatus", () => {
   });
 });
 
-describe("startStreamingStatusRecording", () => {
+describe("startStreamingUrlsRecording", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -163,15 +163,13 @@ describe("startStreamingStatusRecording", () => {
     harness.stop();
   });
 
-  it("subscribeが例外を投げたらstartStreamingStatusRecordingも同じ例外を投げる", () => {
+  it("subscribeが例外を投げたらstartStreamingUrlsRecordingも同じ例外を投げる", () => {
     const error = new Error("subscribe failed");
     const subscribe = vi.fn<SubscribeToStreamingInfo>(() => {
       throw error;
     });
 
-    expect(() => startStreamingStatusRecording(config, subscribe)).toThrow(
-      error,
-    );
+    expect(() => startStreamingUrlsRecording(config, subscribe)).toThrow(error);
   });
 
   it("メッセージが来なければ書き込まない", async () => {
@@ -184,7 +182,7 @@ describe("startStreamingStatusRecording", () => {
     harness.stop();
   });
 
-  it("両サイトのstatusが揃うまで書き込まない", async () => {
+  it("両サイトの配信情報が揃うまで書き込まない", async () => {
     const harness = createHarness();
 
     harness.emit(message("niconico", true, "lv351748501"));
@@ -317,7 +315,7 @@ describe("startStreamingStatusRecording", () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
-  it("書き込みに失敗しても状態が変われば次のメッセージで書き込む", async () => {
+  it("書き込みに失敗しても配信URLが変われば次のメッセージで書き込む", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const request = vi
       .fn<typeof fetch>()
@@ -342,7 +340,7 @@ describe("startStreamingStatusRecording", () => {
     harness.stop();
   });
 
-  it("書き込みに失敗しても同じ状態のままinterval経過後に再試行する", async () => {
+  it("書き込みに失敗しても同じ配信URLのままinterval経過後に再試行する", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const request = vi
       .fn<typeof fetch>()

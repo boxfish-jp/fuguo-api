@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-export const StreamingStatusValueSchema = z.object({
+export const StreamingUrlsValueSchema = z.object({
   niconico: z.string().nullable().openapi({
     example: "https://live.nicovideo.jp/watch/lv351748501",
     description: "ニコニコの配信URL。配信していなければnull",
@@ -11,9 +11,11 @@ export const StreamingStatusValueSchema = z.object({
   }),
 });
 
-export const StreamingStatusSchema =
-  StreamingStatusValueSchema.nullable().openapi("StreamingStatus", {
+export const StreamingUrlsSchema = StreamingUrlsValueSchema.nullable().openapi(
+  "StreamingUrls",
+  {
     description: "配信中のサイト別URL。配信していなければnull",
-  });
+  },
+);
 
-export type StreamingStatusValue = z.infer<typeof StreamingStatusValueSchema>;
+export type StreamingUrlsValue = z.infer<typeof StreamingUrlsValueSchema>;
