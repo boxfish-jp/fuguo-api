@@ -1,5 +1,5 @@
 {
-  "name": "fuguo_api",
+  "name": "fuguo-api",
   "private": true,
   "packageManager": "pnpm@11.27.0",
   "scripts": {

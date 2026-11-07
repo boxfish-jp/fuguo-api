@@ -14,7 +14,7 @@ app.route("/", streamingUrlsRoutes);
 app.doc("/openapi.json", {
   openapi: "3.0.0",
   info: {
-    title: "fuguo_api",
+    title: "fuguo-api",
     version: "v1",
     description: "ニコ生に生息しているふぐおの色んな情報が取れるAPI",
   },
@@ -24,7 +24,7 @@ app.get(
   "/docs",
   Scalar({
     url: "/openapi.json",
-    pageTitle: "fuguo_api API Reference",
+    pageTitle: "fuguo-api API Reference",
   }),
 );
 

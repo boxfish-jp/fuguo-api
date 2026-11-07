@@ -15,7 +15,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   src = ../.;
 
-  pnpmWorkspaces = [ "@fuguo_api/home-reporter" ];
+  pnpmWorkspaces = [ "@fuguo-api/home-reporter" ];
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs)

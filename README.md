@@ -1,4 +1,4 @@
-# fuguo_api
+# fuguo-api
 
 ふぐおに関する情報を返す公開 API と、その API が参照する宅内サーバーの生存記録、および宅内サーバーが Cloudflare KV に記録する配信 URL を管理するリポジトリです。公開 API は Cloudflare Workers で動き、宅内サーバーは 5 分ごとに Cloudflare KV へ生存記録を書き込み、streamingkit の hub から配信情報を購読して同じく KV に記録します。公開 API は生存記録と配信 URL の両方を参照します。
 
@@ -21,7 +21,7 @@
 2. KV namespace を作成し、表示された ID を `apps/api/wrangler.toml` の `id` に設定します。
 
    ```sh
-   pnpm --filter @fuguo_api/api exec wrangler kv namespace create HOME_REPORTER_KV
+   pnpm --filter @fuguo-api/api exec wrangler kv namespace create HOME_REPORTER_KV
    ```
 
 3. `Workers KV Storage Write` 権限だけを持つ API トークンを作成します。
@@ -37,13 +37,13 @@
 5. 宅内サーバーを起動します。
 
    ```sh
-   pnpm --filter @fuguo_api/home-reporter start
+   pnpm --filter @fuguo-api/home-reporter start
    ```
 
 6. API をデプロイします。
 
    ```sh
-   pnpm --filter @fuguo_api/api deploy
+   pnpm --filter @fuguo-api/api deploy
    ```
 
 ## 配信 URL の記録
@@ -91,7 +91,7 @@ flake の input にこのリポジトリを追加し、ユーザーサービス�
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    fuguo_api.url = "github:boxfish-jp/fuguo_api";
+    fuguo-api.url = "github:boxfish-jp/fuguo-api";
   };
 
   outputs =
@@ -105,7 +105,7 @@ flake の input にこのリポジトリを追加し、ユーザーサービス�
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         modules = [
           {
-            imports = [ inputs.fuguo_api.homeManagerModules.default ];
+            imports = [ inputs.fuguo-api.homeManagerModules.default ];
 
             home.username = "<name>";
             home.homeDirectory = "/home/<name>";

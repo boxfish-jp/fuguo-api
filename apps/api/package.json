@@ -1,5 +1,5 @@
 {
-  "name": "@fuguo_api/api",
+  "name": "@fuguo-api/api",
   "private": true,
   "type": "module",
   "scripts": {

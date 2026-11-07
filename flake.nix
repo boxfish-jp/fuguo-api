@@ -1,5 +1,5 @@
 {
-  description = "fuguo_api";
+  description = "fuguo-api";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
