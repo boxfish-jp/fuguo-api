@@ -1,12 +1,11 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { AppEnv } from "../env";
+import { SERVER_STATUS_KEY } from "../kv_keys";
 import {
   StreamingUrlsSchema,
   type StreamingUrlsValue,
   StreamingUrlsValueSchema,
 } from "../schemas/streaming_urls_schema";
-
-const STREAMING_URLS_KEY = "streaming_urls";
 
 const parseStreamingUrls = (
   value: string | null,
@@ -41,7 +40,7 @@ const route = createRoute({
   tags: ["StreamingUrls"],
   summary: "配信中のサイト別URLを返す",
   description:
-    "KVに記録されたサイト別の配信URLを読み、配信していればそのURLを返す。配信していなければnull。cacheTtlにより最大30秒ほど遅れる。",
+    "server_statusキーに記録されたサイト別の配信URLを読み、配信していればそのURLを返す。配信していなければnull。cacheTtlにより最大30秒ほど遅れる。",
   responses: {
     200: {
       description: "配信中のサイト別URL。配信していなければnull",
@@ -56,7 +55,7 @@ const route = createRoute({
 export const streamingUrlsRoutes = new OpenAPIHono<AppEnv>();
 
 streamingUrlsRoutes.openapi(route, async (c) => {
-  const value = await c.env.HOME_REPORTER_KV.get(STREAMING_URLS_KEY, {
+  const value = await c.env.HOME_REPORTER_KV.get(SERVER_STATUS_KEY, {
     cacheTtl: 30,
   });
   return c.json(parseStreamingUrls(value), 200);

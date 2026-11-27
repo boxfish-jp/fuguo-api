@@ -1,6 +1,6 @@
 # fuguo-api
 
-ふぐおに関する情報を返す公開 API と、その API が参照する宅内サーバーの生存記録、および宅内サーバーが Cloudflare KV に記録する配信 URL を管理するリポジトリです。公開 API は Cloudflare Workers で動き、宅内サーバーは 5 分ごとに Cloudflare KV へ生存記録を書き込み、streamingkit の hub から配信情報を購読して同じく KV に記録します。公開 API は生存記録と配信 URL の両方を参照します。
+ふぐおに関する情報を返す公開 API と、その API が参照する宅内サーバーの生存記録と配信 URL を管理するリポジトリです。公開 API は Cloudflare Workers で動き、宅内サーバーは `LIVENESS_INTERVAL_MS`（既定 5 分）ごとに Cloudflare KV へハートビートを書き、streamingkit の hub から配信情報を購読して同じキーに配信 URL を記録します。公開 API はこのキーを参照します。
 
 ## 動作環境
 
@@ -46,20 +46,23 @@
    pnpm --filter @fuguo-api/api deploy
    ```
 
-## 配信 URL の記録
+## 生存記録と配信 URL の記録
 
-home-reporter は streamingkit の hub（既定 `http://localhost:8888`）へ socket.io で接続し、orchestrator が broadcast する `streaming_info` を購読します。niconico と youtube の両方の配信情報が揃ったら、KV の `streaming_urls` キーへサイト別の配信 URL を TTL 付きで書き込みます。
+home-reporter は streamingkit の hub（既定 `http://localhost:8888`）へ socket.io で接続し、orchestrator が broadcast する `streaming_info` を購読します。`LIVENESS_INTERVAL_MS`（既定 5 分）ごとのハートビート 1 回で、生存記録と配信 URL を `server_status` キーへ TTL 付きで書き込みます。
 
 ```json
-{"niconico":"https://live.nicovideo.jp/watch/lv351748501","youtube":null}
+{"updated_at":"2026-11-27T12:34:56.789Z","niconico":"https://live.nicovideo.jp/watch/lv351748501","youtube":null}
 ```
 
 - niconico は `streaming_info.streamId`（`lv351748501` のような ID）から `https://live.nicovideo.jp/watch/<streamId>` を組み立てます。
 - YouTube は `streaming_info.streamId`（動画 ID）から `https://www.youtube.com/watch?v=<streamId>` を組み立てます。
 - 配信していないサイト、または `streamId` が無いサイトは `null` になります。
-- 配信 URL が変わったら即座に書き込みます。
-- 配信 URL が変わらなくても、メッセージを受信した時点で前回の書き込み試行から `LIVENESS_INTERVAL_MS` 以上経っていれば書き込みます（TTL 更新のため）。書き込みに失敗した場合も、同じ配信 URL のまま次の更新間隔で再試行します。
-- hub からメッセージが来ない間は書き込まないため、hub や orchestrator が止まると TTL でキーが消えます。
+- niconico と youtube の両方の情報が揃うまで、配信 URL は `null` として書き込みます。
+- 配信 URL が変わったら即座に書き込みます。変化がなければ、次のハートビートで `updated_at` だけ更新します。
+- 最後の `streaming_info` から 2 分以上メッセージが来ない場合、次のハートビートで配信 URL を `null` にします。片方のサイトの通知だけが止まった場合は、そのサイトは最後に受信した値のまま残ります。
+- 起動直後は配信 URL が不明なため `null` で書き、hub が状態を再送して niconico と youtube の両方が揃うと更新されます（hub の再送間隔に依存し、hub が落ちていれば `null` のままです）。
+- 書き込みに失敗した場合は、次のハートビートで再試行します（同じ値の再メッセージでは即時再試行しません）。
+- hub からメッセージが来ない間もハートビートは書き続けるため、生存記録は維持されます。
 
 ## Nix での起動
 
@@ -132,7 +135,7 @@ home-manager switch --flake .#<name>
 
 `<name>` はユーザー名に置き換えます。`environmentFile` には `CLOUDFLARE_*` を KEY=VALUE 形式で書いたファイルを指定します。ファイルの所有者をサービス実行ユーザーにし、`chmod 600` で保護します（例: `chown <name> /run/secrets/home-reporter.env && chmod 600 /run/secrets/home-reporter.env`）。`environmentFile` は文字列で指定し、path literal は使わないでください。
 
-`intervalMs` と `ttlSeconds` はそれぞれ `LIVENESS_INTERVAL_MS` と `LIVENESS_TTL_SECONDS` に対応します。上は既定値で、`intervalMs < ttlSeconds * 1000` を満たす必要があります。`streamingKitHubUrl` は `STREAMING_KIT_HUB_URL` に対応し、既定値は `http://localhost:8888` です。
+`intervalMs` は `server_status` のハートビート間隔、`ttlSeconds` はキーの失効秒に対応します。上は既定値で、`intervalMs < ttlSeconds * 1000` を満たす必要があります。`streamingKitHubUrl` は `STREAMING_KIT_HUB_URL` に対応し、既定値は `http://localhost:8888` です。
 
 ユーザーサービスはログイン中しか動きません。常駐させるには linger を有効にします。NixOS では `users.users.<name>.linger = true;`、NixOS 以外では `loginctl enable-linger <name>` を設定します。
 
@@ -143,15 +146,15 @@ home-manager switch --flake .#<name>
 | `CLOUDFLARE_ACCOUNT_ID` | はい | KV を所有するアカウント ID |
 | `CLOUDFLARE_KV_NAMESPACE_ID` | はい | 生存記録と配信 URL を書く namespace ID |
 | `CLOUDFLARE_API_TOKEN` | はい | `Workers KV Storage Write` 権限のトークン |
-| `LIVENESS_INTERVAL_MS` | いいえ | 生存記録の書き込み間隔（既定 300000）。`streaming_urls` は変化時に即時、変化がなければこの間隔で更新する |
-| `LIVENESS_TTL_SECONDS` | いいえ | キーの失効秒（既定 600）。生存記録と `streaming_urls` の両方に使う |
+| `LIVENESS_INTERVAL_MS` | いいえ | `server_status` のハートビート間隔（既定 300000）。配信 URL の変化は待たずに即時書き込む |
+| `LIVENESS_TTL_SECONDS` | いいえ | `server_status` キーの失効秒（既定 600） |
 | `STREAMING_KIT_HUB_URL` | いいえ | streamingkit hub の URL（既定 `http://localhost:8888`）。http または https のみ |
 
 ## エンドポイント
 
-`GET /api/server_status` は `{"alive": true}` または `{"alive": false}` を返します。KV にキーが存在すれば `true` です。
+`GET /api/server_status` は `{"alive": true}` または `{"alive": false}` を返します。KV に `server_status` キーが存在すれば `true` です。
 
-`GET /api/streaming_urls` は配信中のサイト別 URL を返します。配信していなければ `null` です。`cacheTtl` により最大 30 秒ほど遅れることがあります。KV の値が壊れている場合や、配信 URL が文字列でない場合は、`console.error` を出して `null` にフォールバックします。
+`GET /api/streaming_urls` は `server_status` キーに記録された配信中のサイト別 URL を返します。配信していなければ `null` です。`cacheTtl` により最大 30 秒ほど遅れることがあります。KV の値が壊れている場合や、配信 URL が文字列でない場合は、`console.error` を出して `null` にフォールバックします。レスポンスには `updated_at` を含めません。
 
 ```json
 {"niconico":"https://live.nicovideo.jp/watch/lv351748501","youtube":null}
@@ -163,6 +166,6 @@ null
 
 ## 注意
 
-- 生存記録は KV の `server_status` キーを上書きします。キー名は writer と API の両方に現れるため、変えるときは両方と両テストを同時に変えてください。
-- 配信 URL は KV の `streaming_urls` キーを上書きします。値は niconico と youtube の配信 URL（または null）を持つ JSON です。キー名は writer と API の両方に現れるため、変えるときは両方と両テストを同時に変えてください。片方のサイトの通知だけが止まった場合、そのサイトは最後に受信した値のまま残ります。
-- 停止の検知は、最後の書き込みから TTL の 600 秒後になります。KV の反映とキャッシュにより、さらに最大 60 秒ほど遅れることがあります。`streaming_urls` も hub からのメッセージが止まると同じく TTL で消えます。
+- `server_status` キーは生存記録と配信 URL を 1 つの JSON で上書きします。キー名は writer と API の両方に現れるため、変えるときは両方と両テストを同時に変えてください。
+- 旧 `streaming_urls` キーは新しいコードでは読み書きしません。デプロイ後は TTL で消えるため、home-reporter を先に、API を後にデプロイしてください。API を先にすると旧 `server_status`（ISO 文字列）を JSON として読めず、旧 writer が動いている間は `/api/streaming_urls` が `null` を返し、`console.error` が出ます。
+- 停止の検知は、最後の書き込みから TTL の 600 秒後になります。KV の反映とキャッシュにより、さらに最大 60 秒ほど遅れることがあります。hub が止まった場合は、次のハートビートで配信 URL が `null` になります。

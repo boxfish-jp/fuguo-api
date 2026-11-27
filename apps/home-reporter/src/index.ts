@@ -1,28 +1,15 @@
 import {
-  readLivenessRecordConfig,
+  readHomeStatusConfig,
   SERVER_STATUS_KEY,
-  startLivenessRecording,
-} from "./liveness_record";
-import { readStreamingKitHubUrl } from "./streaming_kit_hub";
-import {
-  STREAMING_URLS_KEY,
-  startStreamingUrlsRecording,
-} from "./streaming_urls";
+  startHomeStatusRecording,
+} from "./home_status";
 
-const livenessConfig = readLivenessRecordConfig(process.env);
-const streamingConfig = {
-  kv: livenessConfig.kv,
-  hubUrl: readStreamingKitHubUrl(process.env),
-  intervalMs: livenessConfig.intervalMs,
-  ttlSeconds: livenessConfig.ttlSeconds,
-};
+const config = readHomeStatusConfig(process.env);
 
-const stopLiveness = startLivenessRecording(livenessConfig);
-const stopStreaming = startStreamingUrlsRecording(streamingConfig);
+const stop = startHomeStatusRecording(config);
 
 const shutdown = (): void => {
-  stopLiveness();
-  stopStreaming();
+  stop();
   process.exit(0);
 };
 
@@ -30,8 +17,5 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 console.info(
-  `liveness recording scheduled: key=${SERVER_STATUS_KEY} intervalMs=${livenessConfig.intervalMs}`,
-);
-console.info(
-  `streaming urls recording started: key=${STREAMING_URLS_KEY} hubUrl=${streamingConfig.hubUrl} intervalMs=${streamingConfig.intervalMs} ttlSeconds=${streamingConfig.ttlSeconds}`,
+  `home status recording started: key=${SERVER_STATUS_KEY} intervalMs=${config.intervalMs} ttlSeconds=${config.ttlSeconds} staleMs=${config.staleMs} hubUrl=${config.hubUrl}`,
 );

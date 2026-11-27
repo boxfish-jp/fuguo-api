@@ -16,7 +16,13 @@ describe("GET /api/server_status", () => {
   });
 
   it("KVに値があればalive trueを返す", async () => {
-    const get = vi.fn<KvGet>().mockResolvedValue("2026-11-02T00:00:00.000Z");
+    const get = vi.fn<KvGet>().mockResolvedValue(
+      JSON.stringify({
+        updated_at: "2026-11-02T00:00:00.000Z",
+        niconico: null,
+        youtube: null,
+      }),
+    );
 
     const response = await app.request(
       "/api/server_status",
