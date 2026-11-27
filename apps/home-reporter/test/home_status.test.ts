@@ -232,7 +232,7 @@ describe("startHomeStatusRecording", () => {
     harness.stop();
   });
 
-  it("片siteだけ既知のハートビートはnullを書く", async () => {
+  it("片siteだけ既知の定期書き込みはnullを書く", async () => {
     const harness = createHarness();
     await flush();
     harness.emit(message("niconico", true, "lv351748501"));
@@ -280,7 +280,7 @@ describe("startHomeStatusRecording", () => {
     harness.stop();
   });
 
-  it("staleMsを超えてstreaming_infoが来なければ次のハートビートでnullを書く", async () => {
+  it("staleMsを超えてstreaming_infoが来なければ次の定期書き込みでnullを書く", async () => {
     const harness = createHarness(timingConfig);
     await flush();
     harness.emit(message("niconico", true, "lv351748501"));
@@ -300,7 +300,7 @@ describe("startHomeStatusRecording", () => {
     harness.stop();
   });
 
-  it("staleMs以内にstreaming_infoが来ればハートビートで配信URLを書く", async () => {
+  it("staleMs以内にstreaming_infoが来れば定期書き込みで配信URLを書く", async () => {
     const harness = createHarness(timingConfig);
     await flush();
     harness.emit(message("niconico", true, "lv351748501"));
@@ -467,7 +467,7 @@ describe("startHomeStatusRecording", () => {
     harness.stop();
   });
 
-  it("書き込みに失敗しても同じ値の再メッセージでは即時再試行せず次のハートビートで再試行する", async () => {
+  it("書き込みに失敗しても同じ値の再メッセージでは即時再試行せず次の定期書き込みで再試行する", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const request = vi
       .fn<typeof fetch>()

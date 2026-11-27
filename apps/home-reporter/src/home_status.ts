@@ -1,8 +1,5 @@
-import {
-  type CloudflareKvConfig,
-  putKvValue,
-  readKvConfig,
-} from "./cloudflare_kv";
+import { type CloudflareKvConfig, readKvConfig } from "./cloudflare_kv";
+import { startKvWriting } from "./kv_writer";
 import {
   readStreamingKitHubUrl,
   type StreamingInfoMessage,
@@ -26,6 +23,11 @@ export type HomeStatusConfig = {
   intervalMs: number;
   ttlSeconds: number;
   staleMs: number;
+};
+
+type StreamingUrlsSource = {
+  read: () => StreamingUrls;
+  handle: (message: StreamingInfoMessage) => void;
 };
 
 const readSafeInteger = (
@@ -78,127 +80,70 @@ export const readHomeStatusConfig = (
   };
 };
 
-export const startHomeStatusRecording = (
-  config: HomeStatusConfig,
-  subscribe: SubscribeToStreamingInfo = subscribeToStreamingInfo,
-  request: typeof fetch = fetch,
-): (() => void) => {
-  let stopped = false;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let writeChain: Promise<void> = Promise.resolve();
-  let lastWrittenUrls: StreamingUrls | undefined;
+const createStreamingUrlsSource = (staleMs: number): StreamingUrlsSource => {
   let lastMessageAt: number | undefined;
   const urlsBySite: Partial<StreamingUrls> = {};
 
-  const clearHeartbeat = (): void => {
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      timer = undefined;
-    }
-  };
-
   const clearStaleUrls = (): void => {
-    if (
-      lastMessageAt !== undefined &&
-      Date.now() - lastMessageAt >= config.staleMs
-    ) {
+    if (lastMessageAt !== undefined && Date.now() - lastMessageAt >= staleMs) {
       delete urlsBySite.niconico;
       delete urlsBySite.youtube;
     }
   };
 
-  const urlsForHeartbeat = (): StreamingUrls => {
-    const niconico = urlsBySite.niconico;
-    const youtube = urlsBySite.youtube;
-    if (niconico === undefined || youtube === undefined) {
-      return { niconico: null, youtube: null };
-    }
-    return { niconico, youtube };
-  };
-
-  const writeStatus = (urls: StreamingUrls): void => {
-    clearHeartbeat();
-    lastWrittenUrls = urls;
-    const status: HomeStatus = {
-      updated_at: new Date().toISOString(),
-      niconico: urls.niconico,
-      youtube: urls.youtube,
-    };
-    const value = JSON.stringify(status);
-    writeChain = writeChain.then(async () => {
-      if (stopped) {
-        return;
+  return {
+    read: (): StreamingUrls => {
+      clearStaleUrls();
+      const niconico = urlsBySite.niconico;
+      const youtube = urlsBySite.youtube;
+      if (niconico === undefined || youtube === undefined) {
+        return { niconico: null, youtube: null };
       }
-      try {
-        await putKvValue(
-          config.kv,
-          SERVER_STATUS_KEY,
-          value,
-          config.ttlSeconds,
-          request,
-        );
-      } catch (error) {
-        console.error(error);
-      }
-      scheduleHeartbeat();
-    });
+      return { niconico, youtube };
+    },
+    handle: (message: StreamingInfoMessage): void => {
+      lastMessageAt = Date.now();
+      urlsBySite[message.site] = streamUrlOf(message);
+    },
   };
+};
 
-  const heartbeat = (): void => {
-    if (stopped) {
-      return;
-    }
-    clearStaleUrls();
-    writeStatus(urlsForHeartbeat());
-  };
+const sameStreamingUrls = (
+  left: StreamingUrls,
+  right: StreamingUrls,
+): boolean =>
+  left.niconico === right.niconico && left.youtube === right.youtube;
 
-  const scheduleHeartbeat = (): void => {
-    if (stopped) {
-      return;
-    }
-    clearHeartbeat();
-    timer = setTimeout(heartbeat, config.intervalMs);
-  };
+const toHomeStatusJson = (urls: StreamingUrls): string =>
+  JSON.stringify({
+    updated_at: new Date().toISOString(),
+    niconico: urls.niconico,
+    youtube: urls.youtube,
+  } satisfies HomeStatus);
 
-  const handleMessage = (message: StreamingInfoMessage): void => {
-    if (stopped) {
-      return;
-    }
-    lastMessageAt = Date.now();
-    urlsBySite[message.site] = streamUrlOf(message);
-    const niconico = urlsBySite.niconico;
-    const youtube = urlsBySite.youtube;
-    if (niconico === undefined || youtube === undefined) {
-      return;
-    }
-    const urls: StreamingUrls = { niconico, youtube };
-    if (
-      lastWrittenUrls !== undefined &&
-      lastWrittenUrls.niconico === urls.niconico &&
-      lastWrittenUrls.youtube === urls.youtube
-    ) {
-      return;
-    }
-    writeStatus(urls);
-  };
-
-  let unsubscribe: (() => void) | undefined;
-  try {
-    unsubscribe = subscribe(config.hubUrl, handleMessage);
-  } catch (error) {
-    stopped = true;
-    throw error;
-  }
-  if (lastWrittenUrls === undefined) {
-    writeStatus({ niconico: null, youtube: null });
-  }
-
-  return () => {
-    if (stopped) {
-      return;
-    }
-    stopped = true;
-    clearHeartbeat();
-    unsubscribe?.();
-  };
+export const startHomeStatusRecording = (
+  config: HomeStatusConfig,
+  subscribe: SubscribeToStreamingInfo = subscribeToStreamingInfo,
+  request: typeof fetch = fetch,
+): (() => void) => {
+  const source = createStreamingUrlsSource(config.staleMs);
+  return startKvWriting(
+    {
+      kv: config.kv,
+      key: SERVER_STATUS_KEY,
+      intervalMs: config.intervalMs,
+      ttlSeconds: config.ttlSeconds,
+      source: {
+        read: source.read,
+        equals: sameStreamingUrls,
+        serialize: toHomeStatusJson,
+      },
+      subscribe: (onChange) =>
+        subscribe(config.hubUrl, (message) => {
+          source.handle(message);
+          onChange();
+        }),
+    },
+    request,
+  );
 };

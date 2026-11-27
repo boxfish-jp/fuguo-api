@@ -40,7 +40,7 @@ const route = createRoute({
   tags: ["StreamingUrls"],
   summary: "配信中のサイト別URLを返す",
   description:
-    "server_statusキーに記録されたサイト別の配信URLを読み、配信していればそのURLを返す。配信していなければnull。cacheTtlにより最大30秒ほど遅れる。",
+    "KVに記録されたサイト別の配信URLを読み、配信していればそのURLを返す。配信していなければnull。cacheTtlにより最大30秒ほど遅れる。",
   responses: {
     200: {
       description: "配信中のサイト別URL。配信していなければnull",
