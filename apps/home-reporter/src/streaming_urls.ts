@@ -1,21 +1,17 @@
-import { type CloudflareKvConfig, putKvValue } from "./cloudflare_kv";
 import {
+  type CloudflareKvConfig,
+  putKvValue,
+  readKvConfig,
+  readKvValue,
+} from "./cloudflare_kv";
+import { STREAMING_URL_KEYS } from "./kv_keys";
+import {
+  readStreamingKitHubUrl,
   type StreamingInfoMessage,
   type StreamingSite,
   type SubscribeToStreamingInfo,
   subscribeToStreamingInfo,
 } from "./streaming_kit_hub";
-
-export const STREAMING_URLS_KEY = "streaming_urls";
-
-export type StreamingUrls = Record<StreamingSite, string | null>;
-
-export type StreamingUrlsRecordConfig = {
-  kv: CloudflareKvConfig;
-  hubUrl: string;
-  intervalMs: number;
-  ttlSeconds: number;
-};
 
 const STREAM_URL_BUILDERS: Record<StreamingSite, (streamId: string) => string> =
   {
@@ -30,76 +26,111 @@ export const streamUrlOf = (message: StreamingInfoMessage): string | null => {
   return STREAM_URL_BUILDERS[message.site](message.streamId);
 };
 
-export const recordStreamingUrls = async (
-  config: StreamingUrlsRecordConfig,
-  urls: StreamingUrls,
-  request: typeof fetch = fetch,
-): Promise<void> => {
-  await putKvValue(
-    config.kv,
-    STREAMING_URLS_KEY,
-    JSON.stringify({
-      niconico: urls.niconico,
-      youtube: urls.youtube,
-    }),
-    config.ttlSeconds,
-    request,
-  );
+export type StreamingUrlsConfig = {
+  kv: CloudflareKvConfig;
+  hubUrl: string;
+};
+
+export const readStreamingUrlsConfig = (
+  env: NodeJS.ProcessEnv,
+): StreamingUrlsConfig => ({
+  kv: readKvConfig(env),
+  hubUrl: readStreamingKitHubUrl(env),
+});
+
+const parseStreamingUrl = (raw: string | null): string | null | undefined => {
+  if (raw === null) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  if (parsed === null || typeof parsed === "string") {
+    return parsed;
+  }
+  return undefined;
 };
 
 export const startStreamingUrlsRecording = (
-  config: StreamingUrlsRecordConfig,
+  config: StreamingUrlsConfig,
   subscribe: SubscribeToStreamingInfo = subscribeToStreamingInfo,
   request: typeof fetch = fetch,
 ): (() => void) => {
   let stopped = false;
   let writeChain: Promise<void> = Promise.resolve();
-  let lastWriteRequest: { urls: StreamingUrls; at: number } | undefined;
-  const urlsBySite: Partial<StreamingUrls> = {};
 
-  const handleMessage = (message: StreamingInfoMessage): void => {
+  const writeUrl = (site: StreamingSite, next: string | null): void => {
+    const key = STREAMING_URL_KEYS[site];
+    writeChain = writeChain
+      .then(async () => {
+        if (stopped) {
+          return;
+        }
+        let raw: string | null;
+        try {
+          raw = await readKvValue(config.kv, key, request);
+        } catch (error) {
+          console.error(error);
+          return;
+        }
+        if (stopped) {
+          return;
+        }
+        if (parseStreamingUrl(raw) === next) {
+          return;
+        }
+        try {
+          await putKvValue(
+            config.kv,
+            key,
+            JSON.stringify(next),
+            undefined,
+            request,
+          );
+        } catch (error) {
+          console.error(error);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
+
+  const handleStreamingInfo = (message: StreamingInfoMessage): void => {
     if (stopped) {
       return;
     }
-    urlsBySite[message.site] = streamUrlOf(message);
-    const niconico = urlsBySite.niconico;
-    const youtube = urlsBySite.youtube;
-    if (niconico === undefined || youtube === undefined) {
-      return;
-    }
-    const urls: StreamingUrls = { niconico, youtube };
-    const changed =
-      lastWriteRequest === undefined ||
-      lastWriteRequest.urls.niconico !== urls.niconico ||
-      lastWriteRequest.urls.youtube !== urls.youtube;
-    const now = Date.now();
-    const elapsedMs =
-      lastWriteRequest === undefined
-        ? Number.POSITIVE_INFINITY
-        : now - lastWriteRequest.at;
-    if (!changed && elapsedMs < config.intervalMs) {
-      return;
-    }
-    lastWriteRequest = { urls, at: now };
-    writeChain = writeChain.then(async () => {
-      if (stopped) {
-        return;
-      }
-      try {
-        await recordStreamingUrls(config, urls, request);
-      } catch (error) {
-        console.error(error);
-      }
-    });
+    writeUrl(message.site, streamUrlOf(message));
   };
 
-  const unsubscribe = subscribe(config.hubUrl, handleMessage);
+  const clearStreamingUrls = (): void => {
+    if (stopped) {
+      return;
+    }
+    writeUrl("niconico", null);
+    writeUrl("youtube", null);
+  };
+
+  let unsubscribe: (() => void) | undefined;
+  try {
+    unsubscribe = subscribe(
+      config.hubUrl,
+      handleStreamingInfo,
+      clearStreamingUrls,
+    );
+  } catch (error) {
+    stopped = true;
+    throw error;
+  }
 
   return () => {
     if (stopped) {
       return;
     }
     stopped = true;
-    unsubscribe();
+    unsubscribe?.();
   };
 };

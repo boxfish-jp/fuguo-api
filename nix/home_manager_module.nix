@@ -44,13 +44,13 @@ in
     intervalMs = lib.mkOption {
       type = lib.types.ints.between 1000 2147483647;
       default = 300000;
-      description = "Interval between liveness writes in milliseconds. Sets LIVENESS_INTERVAL_MS.";
+      description = "Interval between KV writes in milliseconds. Sets LIVENESS_INTERVAL_MS.";
     };
 
     ttlSeconds = lib.mkOption {
       type = lib.types.ints.between 60 2147483647;
       default = 600;
-      description = "Expiration of the liveness record in seconds. Sets LIVENESS_TTL_SECONDS.";
+      description = "Expiration of the KV write in seconds. Sets LIVENESS_TTL_SECONDS.";
     };
 
     streamingKitHubUrl = lib.mkOption {

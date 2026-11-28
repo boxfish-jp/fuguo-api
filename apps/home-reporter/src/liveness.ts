@@ -3,12 +3,12 @@ import {
   putKvValue,
   readKvConfig,
 } from "./cloudflare_kv";
+import { SERVER_STATUS_KEY } from "./kv_keys";
 
-export const SERVER_STATUS_KEY = "server_status";
 const DEFAULT_INTERVAL_MS = 300_000;
 const DEFAULT_TTL_SECONDS = 600;
 
-export type LivenessRecordConfig = {
+export type LivenessConfig = {
   kv: CloudflareKvConfig;
   intervalMs: number;
   ttlSeconds: number;
@@ -30,9 +30,7 @@ const readSafeInteger = (
   return value;
 };
 
-export const readLivenessRecordConfig = (
-  env: NodeJS.ProcessEnv,
-): LivenessRecordConfig => {
+export const readLivenessConfig = (env: NodeJS.ProcessEnv): LivenessConfig => {
   const kv = readKvConfig(env);
   const intervalMs = readSafeInteger(
     env,
@@ -58,49 +56,52 @@ export const readLivenessRecordConfig = (
   return { kv, intervalMs, ttlSeconds };
 };
 
-export const recordLiveness = async (
-  config: LivenessRecordConfig,
-  request: typeof fetch = fetch,
-): Promise<void> => {
-  await putKvValue(
-    config.kv,
-    SERVER_STATUS_KEY,
-    new Date().toISOString(),
-    config.ttlSeconds,
-    request,
-  );
-};
-
 export const startLivenessRecording = (
-  config: LivenessRecordConfig,
+  config: LivenessConfig,
   request: typeof fetch = fetch,
 ): (() => void) => {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const writeOnce = async (): Promise<void> => {
-    try {
-      await recordLiveness(config, request);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const loop = (): void => {
-    void writeOnce().finally(() => {
-      if (stopped) {
-        return;
-      }
-      timer = setTimeout(loop, config.intervalMs);
-    });
-  };
-
-  loop();
-
-  return () => {
-    stopped = true;
+  const clearTimer = (): void => {
     if (timer !== undefined) {
       clearTimeout(timer);
+      timer = undefined;
     }
+  };
+
+  const scheduleNext = (): void => {
+    if (stopped) {
+      return;
+    }
+    clearTimer();
+    timer = setTimeout(writeServerStatus, config.intervalMs);
+  };
+
+  const writeServerStatus = (): void => {
+    if (stopped) {
+      return;
+    }
+    void putKvValue(
+      config.kv,
+      SERVER_STATUS_KEY,
+      new Date().toISOString(),
+      config.ttlSeconds,
+      request,
+    )
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(scheduleNext);
+  };
+
+  writeServerStatus();
+
+  return () => {
+    if (stopped) {
+      return;
+    }
+    stopped = true;
+    clearTimer();
   };
 };

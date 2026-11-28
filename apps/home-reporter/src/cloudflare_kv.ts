@@ -14,23 +14,50 @@ const readRequired = (env: NodeJS.ProcessEnv, name: string): string => {
   return value;
 };
 
+const valueUrl = (config: CloudflareKvConfig, key: string): URL =>
+  new URL(
+    `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/storage/kv/namespaces/${config.namespaceId}/values/${encodeURIComponent(key)}`,
+  );
+
 export const readKvConfig = (env: NodeJS.ProcessEnv): CloudflareKvConfig => ({
   accountId: readRequired(env, "CLOUDFLARE_ACCOUNT_ID"),
   namespaceId: readRequired(env, "CLOUDFLARE_KV_NAMESPACE_ID"),
   token: readRequired(env, "CLOUDFLARE_API_TOKEN"),
 });
 
+export const readKvValue = async (
+  config: CloudflareKvConfig,
+  key: string,
+  request: typeof fetch = fetch,
+): Promise<string | null> => {
+  const response = await request(valueUrl(config, key), {
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+    },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      `KV read failed with status ${response.status}: ${await response.text()}`,
+    );
+  }
+  return response.text();
+};
+
 export const putKvValue = async (
   config: CloudflareKvConfig,
   key: string,
   value: string,
-  ttlSeconds: number,
+  ttlSeconds: number | undefined,
   request: typeof fetch = fetch,
 ): Promise<void> => {
-  const url = new URL(
-    `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/storage/kv/namespaces/${config.namespaceId}/values/${encodeURIComponent(key)}`,
-  );
-  url.searchParams.set("expiration_ttl", String(ttlSeconds));
+  const url = valueUrl(config, key);
+  if (ttlSeconds !== undefined) {
+    url.searchParams.set("expiration_ttl", String(ttlSeconds));
+  }
   const response = await request(url, {
     method: "PUT",
     headers: {

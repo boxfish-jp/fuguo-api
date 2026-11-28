@@ -1,8 +1,7 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { AppEnv } from "../env";
+import { SERVER_STATUS_KEY } from "../kv_keys";
 import { ServerStatusSchema } from "../schemas/server_status_schema";
-
-const SERVER_STATUS_KEY = "server_status";
 
 const route = createRoute({
   method: "get",
