@@ -1,15 +1,19 @@
+import { SERVER_STATUS_KEY, STREAMING_URL_KEYS } from "./kv_keys";
+import { readLivenessConfig, startLivenessRecording } from "./liveness";
 import {
-  readHomeStatusConfig,
-  SERVER_STATUS_KEY,
-  startHomeStatusRecording,
-} from "./home_status";
+  readStreamingUrlsConfig,
+  startStreamingUrlsRecording,
+} from "./streaming_urls";
 
-const config = readHomeStatusConfig(process.env);
+const livenessConfig = readLivenessConfig(process.env);
+const streamingUrlsConfig = readStreamingUrlsConfig(process.env);
 
-const stop = startHomeStatusRecording(config);
+const stopLiveness = startLivenessRecording(livenessConfig);
+const stopStreamingUrls = startStreamingUrlsRecording(streamingUrlsConfig);
 
 const shutdown = (): void => {
-  stop();
+  stopLiveness();
+  stopStreamingUrls();
   process.exit(0);
 };
 
@@ -17,5 +21,8 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 console.info(
-  `home status recording started: key=${SERVER_STATUS_KEY} intervalMs=${config.intervalMs} ttlSeconds=${config.ttlSeconds} staleMs=${config.staleMs} hubUrl=${config.hubUrl}`,
+  `liveness recording started: key=${SERVER_STATUS_KEY} intervalMs=${livenessConfig.intervalMs} ttlSeconds=${livenessConfig.ttlSeconds}`,
+);
+console.info(
+  `streaming urls recording started: keys=${STREAMING_URL_KEYS.niconico},${STREAMING_URL_KEYS.youtube} hubUrl=${streamingUrlsConfig.hubUrl}`,
 );

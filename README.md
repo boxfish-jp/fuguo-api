@@ -1,6 +1,6 @@
 # fuguo-api
 
-ふぐおに関する情報を返す公開 API と、その API が参照する宅内サーバーの生存記録と配信 URL を管理するリポジトリです。公開 API は Cloudflare Workers で動き、宅内サーバーは streamingkit の hub から配信情報を購読し、`LIVENESS_INTERVAL_MS`（既定 5 分）ごとに生存記録と配信 URL を Cloudflare KV に記録します。公開 API はこの値を参照します。
+ふぐおに関する情報を返す公開 API と、その API が参照する宅内サーバーの生存記録と配信 URL を管理するリポジトリです。公開 API は Cloudflare Workers で動き、宅内サーバーは streamingkit の hub から配信情報を購読します。配信 URL は変化のたびに、生存記録は `LIVENESS_INTERVAL_MS`（既定 5 分）ごとに Cloudflare KV に記録します。公開 API はこの値を参照します。
 
 ## 動作環境
 
@@ -48,7 +48,7 @@
 
 ## 生存記録と配信 URL の記録
 
-home-reporter は streamingkit の hub へ接続し、`LIVENESS_INTERVAL_MS`（既定 5 分）ごとに生存記録と配信 URL を Cloudflare KV に記録します。記録する値は [apps/home-reporter/src/home_status.ts](apps/home-reporter/src/home_status.ts)、書き込みの仕組みは [apps/home-reporter/src/kv_writer.ts](apps/home-reporter/src/kv_writer.ts) を参照してください。
+home-reporter は streamingkit の hub へ接続し、配信 URL は `streaming_info` を受けるたびに KV の値と照合して変わっていれば記録し、生存記録は `LIVENESS_INTERVAL_MS`（既定 5 分）ごとに Cloudflare KV へ記録します。実装は [apps/home-reporter/src/liveness.ts](apps/home-reporter/src/liveness.ts) と [apps/home-reporter/src/streaming_urls.ts](apps/home-reporter/src/streaming_urls.ts) を参照してください。
 
 ## Nix での起動
 

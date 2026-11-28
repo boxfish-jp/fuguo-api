@@ -3,6 +3,7 @@ import {
   type CloudflareKvConfig,
   putKvValue,
   readKvConfig,
+  readKvValue,
 } from "../src/cloudflare_kv";
 
 const config: CloudflareKvConfig = {
@@ -58,6 +59,55 @@ describe("putKvValue", () => {
     await expect(
       putKvValue(config, "server_status", "payload", 600, request),
     ).rejects.toThrow("KV write failed with status 429: quota exceeded");
+  });
+
+  it("TTLを渡さなければexpiration_ttlを付けない", async () => {
+    const request = okRequest();
+
+    await putKvValue(config, "server_status", "payload", undefined, request);
+
+    const url = new URL(String(request.mock.calls[0][0]));
+    expect(url.searchParams.has("expiration_ttl")).toBe(false);
+  });
+});
+
+describe("readKvValue", () => {
+  it("percent-encodingしたキーでGETし本文を返す", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response("payload", { status: 200 })),
+    );
+
+    await expect(readKvValue(config, "status/2026 11", request)).resolves.toBe(
+      "payload",
+    );
+
+    const [input, init] = request.mock.calls[0];
+    const url = new URL(String(input));
+    expect(`${url.origin}${url.pathname}`).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/account/storage/kv/namespaces/namespace/values/status%2F2026%2011",
+    );
+    expect(init?.method).toBeUndefined();
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Authorization")).toBe("Bearer token");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("404ならnullを返す", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 404 })),
+    );
+
+    await expect(readKvValue(config, "missing", request)).resolves.toBeNull();
+  });
+
+  it("404以外の非2xxならstatusとbodyを含むエラーを投げる", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response("unavailable", { status: 500 })),
+    );
+
+    await expect(readKvValue(config, "server_status", request)).rejects.toThrow(
+      "KV read failed with status 500: unavailable",
+    );
   });
 });
 

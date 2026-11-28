@@ -17,5 +17,3 @@ export const StreamingUrlsSchema = StreamingUrlsValueSchema.nullable().openapi(
     description: "配信中のサイト別URL。配信していなければnull",
   },
 );
-
-export type StreamingUrlsValue = z.infer<typeof StreamingUrlsValueSchema>;

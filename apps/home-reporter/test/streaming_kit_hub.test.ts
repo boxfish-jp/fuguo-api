@@ -177,13 +177,30 @@ describe("subscribeToStreamingInfo", () => {
     unsubscribe();
   });
 
-  it("解除関数がmessageとconnect_errorのoffとdisconnectを呼ぶ", () => {
+  it("disconnectでonDisconnectを呼ぶ", () => {
+    const onDisconnect = vi.fn();
+    const unsubscribe = subscribeToStreamingInfo(
+      "http://hub.example:8888",
+      vi.fn(),
+      onDisconnect,
+    );
+    const handleDisconnect = mocks.handlers.get("disconnect");
+
+    handleDisconnect?.();
+
+    expect(onDisconnect).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+  });
+
+  it("解除関数がmessageとconnect_errorとdisconnectのoffとsocket.disconnectを呼ぶ", () => {
     const unsubscribe = subscribeToStreamingInfo(
       "http://hub.example:8888",
       vi.fn(),
     );
     const handleMessage = mocks.handlers.get("message");
     const handleConnectError = mocks.handlers.get("connect_error");
+    const handleDisconnect = mocks.handlers.get("disconnect");
 
     unsubscribe();
 
@@ -191,6 +208,13 @@ describe("subscribeToStreamingInfo", () => {
     expect(mocks.socket.off).toHaveBeenCalledWith(
       "connect_error",
       handleConnectError,
+    );
+    expect(mocks.socket.off).toHaveBeenCalledWith(
+      "disconnect",
+      handleDisconnect,
+    );
+    expect(mocks.socket.off.mock.invocationCallOrder[2]).toBeLessThan(
+      mocks.socket.disconnect.mock.invocationCallOrder[0] ?? 0,
     );
     expect(mocks.socket.disconnect).toHaveBeenCalledTimes(1);
   });

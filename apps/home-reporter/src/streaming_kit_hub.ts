@@ -16,6 +16,7 @@ export type StreamingInfoMessage = {
 export type SubscribeToStreamingInfo = (
   hubUrl: string,
   onStreamingInfo: (message: StreamingInfoMessage) => void,
+  onDisconnect?: () => void,
 ) => () => void;
 
 export const isStreamingInfoMessage = (
@@ -37,6 +38,7 @@ export const isStreamingInfoMessage = (
 export const subscribeToStreamingInfo: SubscribeToStreamingInfo = (
   hubUrl,
   onStreamingInfo,
+  onDisconnect,
 ) => {
   const socket = io(hubUrl, {
     path: "/ws",
@@ -52,13 +54,18 @@ export const subscribeToStreamingInfo: SubscribeToStreamingInfo = (
   const handleConnectError = (error: Error): void => {
     console.error(error.message);
   };
+  const handleDisconnect = (): void => {
+    onDisconnect?.();
+  };
 
   socket.on("message", handleMessage);
   socket.on("connect_error", handleConnectError);
+  socket.on("disconnect", handleDisconnect);
 
   return () => {
     socket.off("message", handleMessage);
     socket.off("connect_error", handleConnectError);
+    socket.off("disconnect", handleDisconnect);
     socket.disconnect();
   };
 };
